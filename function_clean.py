@@ -8,7 +8,7 @@ import os
 app = func.FunctionApp()
 
 # =========================
-# FUNCIÓN PARA ARREGLAR TILDES
+# FUNCIÓN PARA ARREGLAR TILDE
 # =========================
 def fix_encoding(text):
     if isinstance(text, str):
