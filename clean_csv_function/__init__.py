@@ -5,7 +5,6 @@ from io import BytesIO
 from azure.storage.blob import BlobServiceClient
 import os
 
-app = func.FunctionApp()
 
 def fix_encoding(text):
     if isinstance(text, str):
@@ -15,14 +14,8 @@ def fix_encoding(text):
             return text
     return text
 
-@app.function_name(name="clean_csv_function")
-@app.blob_trigger(
-    arg_name="inputblob",
-    path="raw-csv/{name}",
-    connection="AzureWebJobsStorage"
-)
-def main(inputblob: func.InputStream):
 
+def main(inputblob: func.InputStream):
     logging.info(f"Procesando archivo: {inputblob.name}")
 
     df = pd.read_csv(
@@ -31,15 +24,19 @@ def main(inputblob: func.InputStream):
         dtype={"numero_suministro": str}
     )
 
+    # Arreglar tildes
     for col in df.select_dtypes(include="object").columns:
         df[col] = df[col].apply(fix_encoding)
 
+    # Eliminar filas vacías
     df = df.dropna(how="all")
 
+    # Eliminar columnas si existen
     for col in ["fecha", "_id"]:
         if col in df.columns:
             df = df.drop(columns=[col])
 
+    # Limpiar numero_suministro
     if "numero_suministro" in df.columns:
         df["numero_suministro"] = (
             df["numero_suministro"]
@@ -47,14 +44,17 @@ def main(inputblob: func.InputStream):
             .astype(int)
         )
 
+    # Limpiar energia
     if "energia" in df.columns:
         df["energia"] = (
             pd.to_numeric(df["energia"], errors="coerce")
             .astype(int)
         )
 
+    # Normalizar nombres de columnas
     df.columns = df.columns.str.strip().str.lower()
 
+    # Guardar en results
     blob_service_client = BlobServiceClient.from_connection_string(
         os.environ["AzureWebJobsStorage"]
     )
