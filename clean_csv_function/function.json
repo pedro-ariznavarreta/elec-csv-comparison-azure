@@ -8,5 +8,12 @@
       "path": "raw-csv/{name}",
       "connection": "AzureWebJobsStorage"
     }
+    {
+      "name": "outputblob",
+      "type": "blobTrigger",
+      "direction": "out",
+      "path": "results/{name}",
+      "connection": "AzureWebJobsStorage"
+    }
   ]
 }
