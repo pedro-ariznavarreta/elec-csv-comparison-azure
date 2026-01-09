@@ -2,9 +2,6 @@ import logging
 import pandas as pd
 import azure.functions as func
 from io import BytesIO
-from azure.storage.blob import BlobServiceClient
-import os
-
 
 def fix_encoding(text):
     if isinstance(text, str):
@@ -14,29 +11,29 @@ def fix_encoding(text):
             return text
     return text
 
-
-def main(inputblob: func.InputStream):
+def main(inputblob: func.InputStream, outputblob: func.Out[bytes]):
     logging.info(f"Procesando archivo: {inputblob.name}")
 
+    # Leer CSV desde blob de entrada
     df = pd.read_csv(
         BytesIO(inputblob.read()),
         encoding="latin1",
         dtype={"numero_suministro": str}
     )
 
-    # Arreglar tildes
+    # Arreglar tildes en columnas tipo texto
     for col in df.select_dtypes(include="object").columns:
         df[col] = df[col].apply(fix_encoding)
 
     # Eliminar filas vacías
     df = df.dropna(how="all")
 
-    # Eliminar columnas si existen
+    # Eliminar columnas específicas si existen
     for col in ["fecha", "_id"]:
         if col in df.columns:
             df = df.drop(columns=[col])
 
-    # Limpiar numero_suministro
+    # Limpiar número de suministro
     if "numero_suministro" in df.columns:
         df["numero_suministro"] = (
             df["numero_suministro"]
@@ -44,7 +41,7 @@ def main(inputblob: func.InputStream):
             .astype(int)
         )
 
-    # Limpiar energia
+    # Limpiar energía
     if "energia" in df.columns:
         df["energia"] = (
             pd.to_numeric(df["energia"], errors="coerce")
@@ -54,22 +51,11 @@ def main(inputblob: func.InputStream):
     # Normalizar nombres de columnas
     df.columns = df.columns.str.strip().str.lower()
 
-    # Guardar en results
-    blob_service_client = BlobServiceClient.from_connection_string(
-        os.environ["AzureWebJobsStorage"]
-    )
+    # Guardar CSV limpio en blob de salida usando binding de Azure
+    output_bytes = BytesIO()
+    df.to_csv(output_bytes, index=False, encoding="utf-8-sig")
+    output_bytes.seek(0)
 
-    file_name = os.path.basename(inputblob.name)
+    outputblob.set(output_bytes.read())
 
-    output_blob_client = blob_service_client.get_blob_client(
-        container="results",
-        blob=file_name
-    )
-
-    output = BytesIO()
-    df.to_csv(output, index=False, encoding="utf-8-sig")
-    output.seek(0)
-
-    output_blob_client.upload_blob(output, overwrite=True)
-
-    logging.info(f"Archivo limpio guardado en results/{file_name}")
+    logging.info(f"Archivo limpio guardado en results/{inputblob.name}")
