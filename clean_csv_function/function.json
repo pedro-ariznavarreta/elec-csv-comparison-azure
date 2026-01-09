@@ -10,7 +10,7 @@
     },
     {
       "name": "outputblob",
-      "type": "blobTrigger",
+      "type": "blob",
       "direction": "out",
       "path": "results/{name}",
       "connection": "AzureWebJobsStorage"
