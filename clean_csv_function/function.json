@@ -5,14 +5,14 @@
       "name": "inputblob",
       "type": "blobTrigger",
       "direction": "in",
-      "path": "raw-csv/{name}",
+      "path": "raw-csv/ccaa_historico/{name}",
       "connection": "AzureWebJobsStorage"
     },
     {
       "name": "outputblob",
       "type": "blob",
       "direction": "out",
-      "path": "results/{name}",
+      "path": "results/ccaa_historico/{name}",
       "connection": "AzureWebJobsStorage"
     }
   ]
